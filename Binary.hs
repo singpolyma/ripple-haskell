@@ -1,7 +1,9 @@
+{-# LANGUAGE CPP #-}
 module Binary where
 
 import Control.Monad
 import Control.Applicative
+import Data.List
 import Data.Word
 import Data.Bits
 import Data.Binary (Binary(..), Get, putWord8, getWord8)
@@ -12,6 +14,7 @@ import Data.Base58Address (RippleAddress)
 import qualified Data.ByteString.Lazy as LZ
 
 import Amount
+#include "Derive.hs"
 
 newtype VariableLengthData = VariableLengthData LZ.ByteString
 	deriving (Show, Eq)
@@ -92,6 +95,9 @@ data Field =
 	TemplateEntryType Word8         |
 	TransactionResult Word8
 	deriving (Show, Eq)
+
+instance Ord Field where
+	compare x y = compare (tagField x) (tagField y)
 
 instance Binary Field where
 	get = do
@@ -205,6 +211,13 @@ packTypFld (x,y)
 	| x < 16 = [x `shiftL` 4, y]
 	| y < 16 = [y, x]
 	| otherwise = [0, x, y]
+
+newtype Transaction = Transaction [Field]
+	deriving (Show, Eq)
+
+instance Binary Transaction where
+	get = Transaction <$> listUntilEnd
+	put (Transaction fs) = mapM_ put (sort fs)
 
 listUntilEnd :: (Binary a) => Get [a]
 listUntilEnd = do
