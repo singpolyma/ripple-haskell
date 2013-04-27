@@ -104,47 +104,47 @@ instance Binary Field where
 			t -> return t
 		getField (typ,fld)
 
-	put (LedgerEntryType x) = putWord8 01 >> putWord8 01 >> put x
-	put (TransactionType x) = putWord8 01 >> putWord8 02 >> put x
-	put (Flags x) = putWord8 02 >> putWord8 02 >> put x
-	put (SourceTag x) = putWord8 02 >> putWord8 03 >> put x
-	put (SequenceNumber x) = putWord8 02 >> putWord8 04 >> put x
-	put (PreviousTransactionLedgerSequence x) = putWord8 02 >> putWord8 05 >> put x
-	put (LedgerSequence x) = putWord8 02 >> putWord8 06 >> put x
-	put (LedgerCloseTime x) = putWord8 02 >> putWord8 07 >> put x
-	put (ParentLedgerCloseTime x) = putWord8 02 >> putWord8 08 >> put x
-	put (SigningTime x) = putWord8 02 >> putWord8 09 >> put x
-	put (ExpirationTime x) = putWord8 02 >> putWord8 10 >> put x
-	put (TransferRate x) = putWord8 02 >> putWord8 11 >> put x
-	put (Binary.Amount x) = putWord8 06 >> putWord8 01 >> put x
-	put (Balance x) = putWord8 06 >> putWord8 02 >> put x
-	put (Limit x) = putWord8 06 >> putWord8 03 >> put x
-	put (TakerPays x) = putWord8 06 >> putWord8 04 >> put x
-	put (TakerGets x) = putWord8 06 >> putWord8 05 >> put x
-	put (LowLimit x) = putWord8 06 >> putWord8 06 >> put x
-	put (HighLimit x) = putWord8 06 >> putWord8 07 >> put x
-	put (Fee x) = putWord8 06 >> putWord8 08 >> put x
-	put (SendMaximum x) = putWord8 06 >> putWord8 09 >> put x
-	put (PublicKey x) = putWord8 07 >> putWord8 01 >> put x
-	put (MessageKey x) = putWord8 07 >> putWord8 02 >> put x
-	put (SigningPublicKey x) = putWord8 07 >> putWord8 03 >> put x
-	put (TransactionSignature x) = putWord8 07 >> putWord8 04 >> put x
-	put (Generator x) = putWord8 07 >> putWord8 05 >> put x
-	put (Signature x) = putWord8 07 >> putWord8 06 >> put x
-	put (Domain x) = putWord8 07 >> putWord8 07 >> put x
-	put (FundScript x) = putWord8 07 >> putWord8 08 >> put x
-	put (RemoveScript x) = putWord8 07 >> putWord8 09 >> put x
-	put (ExpireScript x) = putWord8 07 >> putWord8 10 >> put x
-	put (CreateScript x) = putWord8 07 >> putWord8 11 >> put x
-	put (Account x) = putWord8 08 >> putWord8 01 >> putWord8 20 >> put x
-	put (Owner x) = putWord8 08 >> putWord8 02 >> putWord8 20 >> put x
-	put (Destination x) = putWord8 08 >> putWord8 03 >> putWord8 20 >> put x
-	put (Issuer x) = putWord8 08 >> putWord8 04 >> putWord8 20 >> put x
-	put (Target x) = putWord8 08 >> putWord8 05 >> putWord8 20 >> put x
-	put (AuthorizedKey x) = putWord8 08 >> putWord8 06 >> putWord8 20 >> put x
-	put (LedgerCloseTimeResolution x) = putWord8 16 >> putWord8 01 >> put x
-	put (TemplateEntryType x) = putWord8 16 >> putWord8 02 >> put x
-	put (TransactionResult x) = putWord8 16 >> putWord8 03 >> put x
+	put (LedgerEntryType x) = mapM_ put (packTypFld (01, 01)) >> put x
+	put (TransactionType x) = mapM_ put (packTypFld (01, 02)) >> put x
+	put (Flags x) = mapM_ put (packTypFld (02, 02)) >> put x
+	put (SourceTag x) = mapM_ put (packTypFld (02, 03)) >> put x
+	put (SequenceNumber x) = mapM_ put (packTypFld (02, 04)) >> put x
+	put (PreviousTransactionLedgerSequence x) = mapM_ put (packTypFld (02, 05)) >> put x
+	put (LedgerSequence x) = mapM_ put (packTypFld (02, 06)) >> put x
+	put (LedgerCloseTime x) = mapM_ put (packTypFld (02, 07)) >> put x
+	put (ParentLedgerCloseTime x) = mapM_ put (packTypFld (02, 08)) >> put x
+	put (SigningTime x) = mapM_ put (packTypFld (02, 09)) >> put x
+	put (ExpirationTime x) = mapM_ put (packTypFld (02, 10)) >> put x
+	put (TransferRate x) = mapM_ put (packTypFld (02, 11)) >> put x
+	put (Binary.Amount x) = mapM_ put (packTypFld (06, 01)) >> put x
+	put (Balance x) = mapM_ put (packTypFld (06, 02)) >> put x
+	put (Limit x) = mapM_ put (packTypFld (06, 03)) >> put x
+	put (TakerPays x) = mapM_ put (packTypFld (06, 04)) >> put x
+	put (TakerGets x) = mapM_ put (packTypFld (06, 05)) >> put x
+	put (LowLimit x) = mapM_ put (packTypFld (06, 06)) >> put x
+	put (HighLimit x) = mapM_ put (packTypFld (06, 07)) >> put x
+	put (Fee x) = mapM_ put (packTypFld (06, 08)) >> put x
+	put (SendMaximum x) = mapM_ put (packTypFld (06, 09)) >> put x
+	put (PublicKey x) = mapM_ put (packTypFld (07, 01)) >> put x
+	put (MessageKey x) = mapM_ put (packTypFld (07, 02)) >> put x
+	put (SigningPublicKey x) = mapM_ put (packTypFld (07, 03)) >> put x
+	put (TransactionSignature x) = mapM_ put (packTypFld (07, 04)) >> put x
+	put (Generator x) = mapM_ put (packTypFld (07, 05)) >> put x
+	put (Signature x) = mapM_ put (packTypFld (07, 06)) >> put x
+	put (Domain x) = mapM_ put (packTypFld (07, 07)) >> put x
+	put (FundScript x) = mapM_ put (packTypFld (07, 08)) >> put x
+	put (RemoveScript x) = mapM_ put (packTypFld (07, 09)) >> put x
+	put (ExpireScript x) = mapM_ put (packTypFld (07, 10)) >> put x
+	put (CreateScript x) = mapM_ put (packTypFld (07, 11)) >> put x
+	put (Account x) = mapM_ put (packTypFld (08, 01)) >> putWord8 20 >> put x
+	put (Owner x) = mapM_ put (packTypFld (08, 02)) >> putWord8 20 >> put x
+	put (Destination x) = mapM_ put (packTypFld (08, 03)) >> putWord8 20 >> put x
+	put (Issuer x) = mapM_ put (packTypFld (08, 04)) >> putWord8 20 >> put x
+	put (Target x) = mapM_ put (packTypFld (08, 05)) >> putWord8 20 >> put x
+	put (AuthorizedKey x) = mapM_ put (packTypFld (08, 06)) >> putWord8 20 >> put x
+	put (LedgerCloseTimeResolution x) = mapM_ put (packTypFld (16, 01)) >> put x
+	put (TemplateEntryType x) = mapM_ put (packTypFld (16, 02)) >> put x
+	put (TransactionResult x) = mapM_ put (packTypFld (16, 03)) >> put x
 
 getField :: (Word8,Word8) -> Get Field
 getField (01,01) = LedgerEntryType <$> get
@@ -198,6 +198,13 @@ getVariableRippleAddress = do
 	when (len /= 20) $
 		fail $ "RippleAddress is 160 bit encoding, len is " ++ show len
 	get
+
+packTypFld :: (Word8,Word8) -> [Word8]
+packTypFld (x,y)
+	| x < 16 && y < 16 = [(x `shiftL` 4) .|. y]
+	| x < 16 = [x `shiftL` 4, y]
+	| y < 16 = [y, x]
+	| otherwise = [0, x, y]
 
 listUntilEnd :: (Binary a) => Get [a]
 listUntilEnd = do
