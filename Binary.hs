@@ -1,5 +1,6 @@
 module Binary where
 
+import Control.Monad
 import Control.Applicative
 import Data.Word
 import Data.Bits
@@ -135,12 +136,12 @@ instance Binary Field where
 	put (RemoveScript x) = putWord8 07 >> putWord8 09 >> put x
 	put (ExpireScript x) = putWord8 07 >> putWord8 10 >> put x
 	put (CreateScript x) = putWord8 07 >> putWord8 11 >> put x
-	put (Account x) = putWord8 08 >> putWord8 01 >> put x
-	put (Owner x) = putWord8 08 >> putWord8 02 >> put x
-	put (Destination x) = putWord8 08 >> putWord8 03 >> put x
-	put (Issuer x) = putWord8 08 >> putWord8 04 >> put x
-	put (Target x) = putWord8 08 >> putWord8 05 >> put x
-	put (AuthorizedKey x) = putWord8 08 >> putWord8 06 >> put x
+	put (Account x) = putWord8 08 >> putWord8 01 >> putWord8 20 >> put x
+	put (Owner x) = putWord8 08 >> putWord8 02 >> putWord8 20 >> put x
+	put (Destination x) = putWord8 08 >> putWord8 03 >> putWord8 20 >> put x
+	put (Issuer x) = putWord8 08 >> putWord8 04 >> putWord8 20 >> put x
+	put (Target x) = putWord8 08 >> putWord8 05 >> putWord8 20 >> put x
+	put (AuthorizedKey x) = putWord8 08 >> putWord8 06 >> putWord8 20 >> put x
 	put (LedgerCloseTimeResolution x) = putWord8 16 >> putWord8 01 >> put x
 	put (TemplateEntryType x) = putWord8 16 >> putWord8 02 >> put x
 	put (TransactionResult x) = putWord8 16 >> putWord8 03 >> put x
@@ -179,16 +180,24 @@ getField (07,08) = FundScript <$> get
 getField (07,09) = RemoveScript <$> get
 getField (07,10) = ExpireScript <$> get
 getField (07,11) = CreateScript <$> get
-getField (08,01) = Account <$> get
-getField (08,02) = Owner <$> get
-getField (08,03) = Destination <$> get
-getField (08,04) = Issuer <$> get
-getField (08,05) = Target <$> get
-getField (08,06) = AuthorizedKey <$> get
+getField (08,01) = Account <$> getVariableRippleAddress
+getField (08,02) = Owner <$> getVariableRippleAddress
+getField (08,03) = Destination <$> getVariableRippleAddress
+getField (08,04) = Issuer <$> getVariableRippleAddress
+getField (08,05) = Target <$> getVariableRippleAddress
+getField (08,06) = AuthorizedKey <$> getVariableRippleAddress
 getField (16,01) = LedgerCloseTimeResolution <$> get
 getField (16,02) = TemplateEntryType <$> get
 getField (16,03) = TransactionResult <$> get
 getField x = fail $ "Unknown Ripple field: " ++ show x
+
+-- For weird encoding of address that also includes length
+getVariableRippleAddress :: Get RippleAddress
+getVariableRippleAddress = do
+	len <- getWord8
+	when (len /= 20) $
+		fail $ "RippleAddress is 160 bit encoding, len is " ++ show len
+	get
 
 listUntilEnd :: (Binary a) => Get [a]
 listUntilEnd = do
