@@ -65,7 +65,7 @@ instance Binary Amount where
 			(fromIntegral (clearBit value 62) / 1000000)
 
 	put (Amount value XRP) =
-		put $ (if value >= 0 then (`setBit` 62) else id) (setBit drops 63)
+		put $ (if value >= 0 then (`setBit` 62) else id) drops
 		where
 		drops = floor $ abs $ value * 1000000 :: Word64
 	put (Amount 0 currency) = do
