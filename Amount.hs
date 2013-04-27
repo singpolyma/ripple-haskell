@@ -53,12 +53,12 @@ instance Binary Amount where
 	get = do
 		value <- get :: Get Word64
 		if testBit value 63 then
-			return $ Amount (-0.111) XRP -- TODO
-			{-
-			case ((clearBit value 63 `shiftR` 7) - 124, value .&. 0x00FFFFFFFFFFFFFF) of
-				(0,0) -> Amount 0 XRP
-				(e,m) -> Amount ((fromIntegral m) ^ e) XRP
-			-}
+			(flip Amount <$> get <*>) $ pure $
+			case (clearBit (clearBit value 63) 62 `shiftR` 54, value .&. 0x003FFFFFFFFFFFFF) of
+				(0,0) -> 0
+				(e,m) ->
+					(if testBit value 62 then 1 else -1) *
+					fromIntegral m * (10 ^^ (fromIntegral e - 97))
 		else
 			return $ (`Amount` XRP) $
 			(if testBit value 62 then 1 else -1) *
