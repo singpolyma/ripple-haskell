@@ -78,8 +78,8 @@ instance Binary Amount where
 		encoded = setBit ((e8 `shiftL` 54) .|. m64) 63
 		e8 = fromIntegral (fromIntegral (e+97) :: Word8) -- to get the bits
 		m64 = fromIntegral m :: Word64
-		(m,e) = until ((> man_min_value) . fst) (\(m,e) -> (m*10,e-1)) $
-			until ((< man_max_value) . fst) (\(m,e) -> (m`div`10,e+1)) $
+		(m,e) = until ((>= man_min_value) . fst) (\(m,e) -> (m*10,e-1)) $
+			until ((<= man_max_value) . fst) (\(m,e) -> (m`div`10,e+1)) $
 			(abs $ floor (value * (10 ^^ 80)), -80)
 
 man_max_value :: Integer
