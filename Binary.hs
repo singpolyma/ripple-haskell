@@ -99,7 +99,7 @@ data Field =
 	deriving (Show, Eq)
 
 instance Ord Field where
-	compare x y = compare (tagField x) (tagField y)
+	compare x y = compare (fromEnum x) (fromEnum y)
 
 instance Binary Field where
 	get = do
