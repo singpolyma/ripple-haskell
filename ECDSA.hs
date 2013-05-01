@@ -2,8 +2,8 @@ module ECDSA where
 
 import qualified Data.ByteString as BS
 
-import Crypto.Types.PubKey.ECDSA (PrivateKey(..))
-import Crypto.Types.PubKey.ECC (Curve(CurveFP), CurvePrime(..), CurveCommon(..))
+import Crypto.Types.PubKey.ECDSA (PrivateKey(..), PublicKey(..))
+import Crypto.Types.PubKey.ECC (Curve(CurveFP), CurvePrime(..), CurveCommon(..), Point(..))
 
 import Codec.Crypto.ECC.Base (pmul, getx, modinv)
 
@@ -23,3 +23,8 @@ sign (PrivateKey curve@(CurveFP (CurvePrime _ (CurveCommon {ecc_g = g, ecc_n = n
 	where
 	l = length (unroll n) -- ByteLength
 sign _ _ _ = error "TODO: binary curves"
+
+publicFromPrivate :: PrivateKey -> PublicKey
+publicFromPrivate (PrivateKey curve@(CurveFP (CurvePrime _ (CurveCommon {ecc_g = g}))) d) =
+	PublicKey curve (hecc2point $ pmul (point2hecc curve g) d)
+publicFromPrivate _ = error "TODO: binary curves"
