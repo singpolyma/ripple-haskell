@@ -124,6 +124,7 @@ instance Binary Field where
 	put (SigningTime x) = mapM_ put (packTypFld (02, 09)) >> put x
 	put (ExpirationTime x) = mapM_ put (packTypFld (02, 10)) >> put x
 	put (TransferRate x) = mapM_ put (packTypFld (02, 11)) >> put x
+	put (WalletSize x) = mapM_ put (packTypFld (02, 12)) >> put x
 	put (Binary.Amount x) = mapM_ put (packTypFld (06, 01)) >> put x
 	put (Balance x) = mapM_ put (packTypFld (06, 02)) >> put x
 	put (Limit x) = mapM_ put (packTypFld (06, 03)) >> put x
