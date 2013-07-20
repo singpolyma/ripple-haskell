@@ -7,7 +7,14 @@ import Data.Word
 import Data.Binary (Binary(..), Get, putWord8)
 import Data.Binary.Get (getLazyByteString)
 import Data.Base58Address (RippleAddress)
+import Control.Error (readZ)
 import qualified Data.ByteString.Lazy as LZ
+import qualified Data.Text as T
+
+import Data.Aeson ((.=), (.:))
+import qualified Data.Aeson as Aeson
+import qualified Data.Aeson.Types as Aeson
+import qualified Data.Attoparsec.Number as Aeson
 
 data Currency = XRP | Currency (Char,Char,Char) RippleAddress
 	deriving (Eq)
@@ -48,6 +55,38 @@ data Amount = Amount Rational Currency
 instance Show Amount where
 	show (Amount a c) =
 		show (realToFrac a :: Double) ++ "/" ++ show c
+
+instance Aeson.ToJSON Amount where
+	toJSON (Amount v XRP) = Aeson.toJSON $ show (floor (v * 1000000) :: Integer)
+	toJSON (Amount v (Currency (a,b,c) issuer)) = Aeson.object [
+			T.pack "value" .= show (realToFrac v :: Double),
+			T.pack "currency" .= [a,b,c],
+			T.pack "issuer" .= show issuer
+		]
+
+instance Aeson.FromJSON Amount where
+	parseJSON (Aeson.Object o) = do
+		amountVal <- o .: T.pack "value"
+		amount <- realToFrac <$> case amountVal of
+			Aeson.Number n ->
+				Aeson.parseJSON (Aeson.Number n) :: Aeson.Parser Double
+			Aeson.String s ->
+				readZ (T.unpack s) :: Aeson.Parser Double
+			_ -> fail "No valid amount"
+		currency <- o .: T.pack "currency"
+		guard (length currency == 3 && currency /= "XRP")
+		issuer <- readZ =<< o .: T.pack "issuer"
+
+		let [a,b,c] = currency
+		return $ Amount amount (Currency (a,b,c) issuer)
+	parseJSON (Aeson.Number (Aeson.I n)) = pure $ Amount (fromIntegral n) XRP
+	parseJSON (Aeson.Number (Aeson.D n)) = pure $ Amount (realToFrac $ floor $ 1000000 * n) XRP
+	parseJSON (Aeson.String s) = case T.find (=='.') s of
+		Nothing -> (Amount . realToFrac) <$>
+			(readZ (T.unpack s) :: Aeson.Parser Integer) <*> pure XRP
+		Just _ -> (\x -> Amount (realToFrac $ x * 1000000)) <$>
+			(readZ (T.unpack s) :: Aeson.Parser Double) <*> pure XRP
+	parseJSON _ = fail "Invalid amount"
 
 instance Binary Amount where
 	get = do
