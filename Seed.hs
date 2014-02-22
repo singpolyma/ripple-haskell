@@ -6,14 +6,11 @@ import Crypto.Hash.CryptoAPI (SHA512, hash')
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as Serialize
 
-import Crypto.Types.PubKey.ECDSA (PrivateKey(..))
 import Crypto.Types.PubKey.ECC (Curve(CurveFP), CurvePrime(..), CurveCommon(..), getCurveByName, CurveName(SEC_p256k1), Point)
-import Codec.Crypto.ECC.Base (pmul)
 
-import Crypto.Util (bs2i)
+import Crypto.Util (bs2i, i2bs_unsized)
 
-import IntegerBytes
-import Hecc
+import ECDSA (pmul, publicToBytes, PublicKey(..), PrivateKey(..))
 
 -- g is the base point, n is the order thereof
 g :: Point
@@ -23,16 +20,15 @@ p256k1@(CurveFP (CurvePrime _ (CurveCommon {ecc_g = g, ecc_n = n}))) = getCurveB
 
 -- | Derive the secret key for the given secret seed and address
 getSecret ::
-	RippleAddress    -- ^ Secret seed address
-	-> RippleAddress -- ^ Public address
+	RippleAddress -- ^ Secret seed address
 	-> PrivateKey
-getSecret seed _ = PrivateKey p256k1 d
+getSecret seed = PrivateKey p256k1 d
 	where
 	d = (sec + priv) `mod` n
 	sec = bs2i $ gen (pub `BS.append` seq)
-	pub = BS.pack $ toBytesCompressed $ pmul (point2hecc p256k1 g) priv
+	pub = publicToBytes $ PublicKey p256k1 $ pmul (p256k1,g) priv
 	priv = bs2i $ gen sbytes
-	sbytes = BS.pack $ unroll (rippleAddressPayload seed)
+	sbytes = i2bs_unsized (rippleAddressPayload seed)
 	seq = Serialize.encode (0 :: Word32)
 
 gen :: BS.ByteString -> BS.ByteString
