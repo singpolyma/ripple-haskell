@@ -120,6 +120,7 @@ getTF 07 = (\(VariableLengthData x) -> TF7 x) <$> get
 getTF 08 = TF8  <$> getVariableRippleAddress
 getTF 16 = TF16 <$> get
 getTF 17 = TF17 <$> get
+getTF x  = error $ "Unknown type for TypedField: " ++ show x
 
 data Field =
 	LedgerEntryType Word16          |
