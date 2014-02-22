@@ -169,7 +169,10 @@ data Field =
 	deriving (Show, Eq)
 
 instance Ord Field where
-	compare x y = compare (fromEnum x) (fromEnum y)
+	compare x y = compare (tagPair x) (tagPair y)
+		where
+		tagPair f = let (tag, tf) = ungetField f in
+			(fst $ putTF tf, tag)
 
 instance Binary Field where
 	get = do
@@ -183,49 +186,15 @@ instance Binary Field where
 		tf <- getTF typ
 		return $ getField fld tf
 
-	put (LedgerEntryType x) = putTaggedTF 01 $ TF1 x
-	put (TransactionType x) = putTaggedTF 02 $ TF1 $ toEnum $ fromEnum x
-	put (Flags x) = putTaggedTF 02 $ TF2 x
-	put (SourceTag x) = putTaggedTF 03 $ TF2 x
-	put (SequenceNumber x) = putTaggedTF 04 $ TF2 x
-	put (PreviousTransactionLedgerSequence x) = putTaggedTF 05 $ TF2 x
-	put (LedgerSequence x) = putTaggedTF 06 $ TF2 x
-	put (LedgerCloseTime x) = putTaggedTF 07 $ TF2 x
-	put (ParentLedgerCloseTime x) = putTaggedTF 08 $ TF2 x
-	put (SigningTime x) = putTaggedTF 09 $ TF2 x
-	put (ExpirationTime x) = putTaggedTF 10 $ TF2 x
-	put (TransferRate x) = putTaggedTF 11 $ TF2 x
-	put (WalletSize x) = putTaggedTF 12 $ TF2 x
-	put (Ripple.Transaction.Amount x) = putTaggedTF 01 $ TF6 x
-	put (Balance x) = putTaggedTF 02 $ TF6 x
-	put (Limit x) = putTaggedTF 03 $ TF6 x
-	put (TakerPays x) = putTaggedTF 04 $ TF6 x
-	put (TakerGets x) = putTaggedTF 05 $ TF6 x
-	put (LowLimit x) = putTaggedTF 06 $ TF6 x
-	put (HighLimit x) = putTaggedTF 07 $ TF6 x
-	put (Fee x) = putTaggedTF 08 $ TF6 x
-	put (SendMaximum x) = putTaggedTF 09 $ TF6 x
-	put (PublicKey x) = putTaggedTF 01 $ TF7 x
-	put (MessageKey x) = putTaggedTF 02 $ TF7 x
-	put (SigningPublicKey x) = putTaggedTF 03 $ TF7 x
-	put (TransactionSignature x) = putTaggedTF 04 $ TF7 x
-	put (Generator x) = putTaggedTF 05 $ TF7 x
-	put (Signature x) = putTaggedTF 06 $ TF7 x
-	put (Domain x) = putTaggedTF 07 $ TF7 x
-	put (FundScript x) = putTaggedTF 08 $ TF7 x
-	put (RemoveScript x) = putTaggedTF 09 $ TF7 x
-	put (ExpireScript x) = putTaggedTF 10 $ TF7 x
-	put (CreateScript x) = putTaggedTF 11 $ TF7 x
-	put (Account x) = putTaggedTF 01 $ TF8 x
-	put (Owner x) = putTaggedTF 02 $ TF8 x
-	put (Destination x) = putTaggedTF 03 $ TF8 x
-	put (Issuer x) = putTaggedTF 04 $ TF8 x
-	put (Target x) = putTaggedTF 05 $ TF8 x
-	put (AuthorizedKey x) = putTaggedTF 06 $ TF8 x
-	put (LedgerCloseTimeResolution x) = putTaggedTF 01 $ TF16 x
-	put (TemplateEntryType x) = putTaggedTF 02 $ TF16 x
-	put (TransactionResult x) = putTaggedTF 03 $ TF16 x
-	put (UnknownField tag tf) = putTaggedTF tag tf
+	put fld = mapM_ put header >> dta
+		where
+		header
+			| typ < 16 && tag < 16 = [(typ `shiftL` 4) .|. tag]
+			| typ < 16 = [typ `shiftL` 4, tag]
+			| tag < 16 = [tag, typ]
+			| otherwise = [0, typ, tag]
+		(typ, dta) = putTF tf
+		(tag, tf)  = ungetField fld
 
 getField :: Word8 -> TypedField -> Field
 getField 01 (TF1  x) = LedgerEntryType x
@@ -272,6 +241,51 @@ getField 02 (TF16 x) = TemplateEntryType x
 getField 03 (TF16 x) = TransactionResult x
 getField tag tf      = UnknownField tag tf
 
+ungetField :: Field -> (Word8, TypedField)
+ungetField (LedgerEntryType x)           = (01, TF1 x)
+ungetField (TransactionType x)           = (02, TF1 $ toEnum $ fromEnum x)
+ungetField (Flags x)                     = (02, TF2 x)
+ungetField (SourceTag x)                 = (03, TF2 x)
+ungetField (SequenceNumber x)            = (04, TF2 x)
+ungetField (PreviousTransactionLedgerSequence x) = (05, TF2 x)
+ungetField (LedgerSequence x)            = (06, TF2 x)
+ungetField (LedgerCloseTime x)           = (07, TF2 x)
+ungetField (ParentLedgerCloseTime x)     = (08, TF2 x)
+ungetField (SigningTime x)               = (09, TF2 x)
+ungetField (ExpirationTime x)            = (10, TF2 x)
+ungetField (TransferRate x)              = (11, TF2 x)
+ungetField (WalletSize x)                = (12, TF2 x)
+ungetField (Ripple.Transaction.Amount x) = (01, TF6 x)
+ungetField (Balance x)                   = (02, TF6 x)
+ungetField (Limit x)                     = (03, TF6 x)
+ungetField (TakerPays x)                 = (04, TF6 x)
+ungetField (TakerGets x)                 = (05, TF6 x)
+ungetField (LowLimit x)                  = (06, TF6 x)
+ungetField (HighLimit x)                 = (07, TF6 x)
+ungetField (Fee x)                       = (08, TF6 x)
+ungetField (SendMaximum x)               = (09, TF6 x)
+ungetField (PublicKey x)                 = (01, TF7 x)
+ungetField (MessageKey x)                = (02, TF7 x)
+ungetField (SigningPublicKey x)          = (03, TF7 x)
+ungetField (TransactionSignature x)      = (04, TF7 x)
+ungetField (Generator x)                 = (05, TF7 x)
+ungetField (Signature x)                 = (06, TF7 x)
+ungetField (Domain x)                    = (07, TF7 x)
+ungetField (FundScript x)                = (08, TF7 x)
+ungetField (RemoveScript x)              = (09, TF7 x)
+ungetField (ExpireScript x)              = (10, TF7 x)
+ungetField (CreateScript x)              = (11, TF7 x)
+ungetField (Account x)                   = (01, TF8 x)
+ungetField (Owner x)                     = (02, TF8 x)
+ungetField (Destination x)               = (03, TF8 x)
+ungetField (Issuer x)                    = (04, TF8 x)
+ungetField (Target x)                    = (05, TF8 x)
+ungetField (AuthorizedKey x)             = (06, TF8 x)
+ungetField (LedgerCloseTimeResolution x) = (01, TF16 x)
+ungetField (TemplateEntryType x)         = (02, TF16 x)
+ungetField (TransactionResult x)         = (03, TF16 x)
+ungetField (UnknownField tag tf)         = (tag, tf)
+
 -- For weird encoding of address that also includes length
 getVariableRippleAddress :: Get RippleAddress
 getVariableRippleAddress = do
@@ -279,16 +293,6 @@ getVariableRippleAddress = do
 	when (len /= 20) $
 		fail $ "RippleAddress is 160 bit encoding, len is " ++ show len
 	get
-
-putTaggedTF :: Word8 -> TypedField -> Put
-putTaggedTF tag tf = mapM_ put header >> fld
-	where
-	header
-		| typ < 16 && tag < 16 = [(typ `shiftL` 4) .|. tag]
-		| typ < 16 = [typ `shiftL` 4, tag]
-		| tag < 16 = [tag, typ]
-		| otherwise = [0, typ, tag]
-	(typ, fld) = putTF tf
 
 newtype Transaction = Transaction [Field]
 	deriving (Show, Eq)
@@ -316,91 +320,3 @@ signing_hash :: Transaction -> LZ.ByteString
 signing_hash t = LZ.take 32 $ Serialize.encodeLazy sha512
 	where
 	sha512 = compute_hash t :: SHA512
-
--- For sorting
-instance Enum Field where
-	toEnum 0 = LedgerEntryType{}
-	toEnum 1 = TransactionType{}
-	toEnum 2 = Flags{}
-	toEnum 3 = SourceTag{}
-	toEnum 4 = SequenceNumber{}
-	toEnum 5 = PreviousTransactionLedgerSequence{}
-	toEnum 6 = LedgerSequence{}
-	toEnum 7 = LedgerCloseTime{}
-	toEnum 8 = ParentLedgerCloseTime{}
-	toEnum 9 = SigningTime{}
-	toEnum 10 = ExpirationTime{}
-	toEnum 11 = TransferRate{}
-	toEnum 12 = WalletSize{}
-	toEnum 13 = Ripple.Transaction.Amount{}
-	toEnum 14 = Balance{}
-	toEnum 15 = Limit{}
-	toEnum 16 = TakerPays{}
-	toEnum 17 = TakerGets{}
-	toEnum 18 = LowLimit{}
-	toEnum 19 = HighLimit{}
-	toEnum 20 = Fee{}
-	toEnum 21 = SendMaximum{}
-	toEnum 22 = PublicKey{}
-	toEnum 23 = MessageKey{}
-	toEnum 24 = SigningPublicKey{}
-	toEnum 25 = TransactionSignature{}
-	toEnum 26 = Generator{}
-	toEnum 27 = Signature{}
-	toEnum 28 = Domain{}
-	toEnum 29 = FundScript{}
-	toEnum 30 = RemoveScript{}
-	toEnum 31 = ExpireScript{}
-	toEnum 32 = CreateScript{}
-	toEnum 33 = LedgerCloseTimeResolution{}
-	toEnum 34 = Account{}
-	toEnum 35 = Owner{}
-	toEnum 36 = Destination{}
-	toEnum 37 = Issuer{}
-	toEnum 38 = Target{}
-	toEnum 39 = AuthorizedKey{}
-	toEnum 40 = TemplateEntryType{}
-	toEnum 41 = TransactionResult{}
-	toEnum n = error $ "toEnum " ++ show n ++ ", not defined for Field"
-	fromEnum (LedgerEntryType{}) = 0
-	fromEnum (TransactionType{}) = 1
-	fromEnum (Flags{}) = 2
-	fromEnum (SourceTag{}) = 3
-	fromEnum (SequenceNumber{}) = 4
-	fromEnum (PreviousTransactionLedgerSequence{}) = 5
-	fromEnum (LedgerSequence{}) = 6
-	fromEnum (LedgerCloseTime{}) = 7
-	fromEnum (ParentLedgerCloseTime{}) = 8
-	fromEnum (SigningTime{}) = 9
-	fromEnum (ExpirationTime{}) = 10
-	fromEnum (TransferRate{}) = 11
-	fromEnum (WalletSize{}) = 12
-	fromEnum (Ripple.Transaction.Amount{}) = 13
-	fromEnum (Balance{}) = 14
-	fromEnum (Limit{}) = 15
-	fromEnum (TakerPays{}) = 16
-	fromEnum (TakerGets{}) = 17
-	fromEnum (LowLimit{}) = 18
-	fromEnum (HighLimit{}) = 19
-	fromEnum (Fee{}) = 20
-	fromEnum (SendMaximum{}) = 21
-	fromEnum (PublicKey{}) = 22
-	fromEnum (MessageKey{}) = 23
-	fromEnum (SigningPublicKey{}) = 24
-	fromEnum (TransactionSignature{}) = 25
-	fromEnum (Generator{}) = 26
-	fromEnum (Signature{}) = 27
-	fromEnum (Domain{}) = 28
-	fromEnum (FundScript{}) = 29
-	fromEnum (RemoveScript{}) = 30
-	fromEnum (ExpireScript{}) = 31
-	fromEnum (CreateScript{}) = 32
-	fromEnum (LedgerCloseTimeResolution{}) = 33
-	fromEnum (Account{}) = 34
-	fromEnum (Owner{}) = 35
-	fromEnum (Destination{}) = 36
-	fromEnum (Issuer{}) = 37
-	fromEnum (Target{}) = 38
-	fromEnum (AuthorizedKey{}) = 39
-	fromEnum (TemplateEntryType{}) = 40
-	fromEnum (TransactionResult{}) = 41
