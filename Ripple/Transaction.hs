@@ -80,10 +80,6 @@ instance Binary VariableLengthData where
 		l2 = l - 193
 		l = LZ.length bytes
 
-instance (Binary a, Binary b) => Binary (LargeKey a b) where
-	put (LargeKey lo hi) = put hi >> put lo
-	get = flip LargeKey <$> get <*> get
-
 data TypedField =
 	TF1  Word16             |
 	TF2  Word32             |
