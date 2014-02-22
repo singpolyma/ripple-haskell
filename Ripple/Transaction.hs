@@ -117,7 +117,11 @@ getTF 04 = TF4  <$> get
 getTF 05 = TF5  <$> get
 getTF 06 = TF6  <$> get
 getTF 07 = (\(VariableLengthData x) -> TF7 x) <$> get
-getTF 08 = TF8  <$> getVariableRippleAddress
+getTF 08 = TF8  <$> do
+	len <- getWord8
+	when (len /= 20) $
+		fail $ "RippleAddress is 160 bit encoding, len is " ++ show len
+	get
 getTF 16 = TF16 <$> get
 getTF 17 = TF17 <$> get
 getTF x  = error $ "Unknown type for TypedField: " ++ show x
@@ -285,14 +289,6 @@ ungetField (LedgerCloseTimeResolution x) = (01, TF16 x)
 ungetField (TemplateEntryType x)         = (02, TF16 x)
 ungetField (TransactionResult x)         = (03, TF16 x)
 ungetField (UnknownField tag tf)         = (tag, tf)
-
--- For weird encoding of address that also includes length
-getVariableRippleAddress :: Get RippleAddress
-getVariableRippleAddress = do
-	len <- getWord8
-	when (len /= 20) $
-		fail $ "RippleAddress is 160 bit encoding, len is " ++ show len
-	get
 
 newtype Transaction = Transaction [Field]
 	deriving (Show, Eq)
