@@ -1,5 +1,8 @@
-{-# LANGUAGE CPP #-}
-module Binary where
+module Ripple.Transaction (
+	Transaction(..),
+	TransactionType(..),
+	Field(..)
+) where
 
 import Control.Monad
 import Control.Applicative
@@ -16,8 +19,7 @@ import Data.Base58Address (RippleAddress)
 import qualified Data.ByteString.Lazy as LZ
 import qualified Data.Serialize as Serialize
 
-import Amount
-#include "Derive.hs"
+import Ripple.Amount
 
 data TransactionType =
 	Payment | AccountSet | SetRegularKey | OfferCreate | OfferCancel |
@@ -39,7 +41,7 @@ instance Enum TransactionType where
 	fromEnum SetRegularKey = 05
 	fromEnum OfferCreate   = 07
 	fromEnum OfferCancel   = 08
-	fromEnum Sign          = 09
+	fromEnum Sign	  = 09
 	fromEnum TrustSet      = 20
 	fromEnum (OtherTransaction x) = fromEnum x
 
@@ -89,7 +91,7 @@ data TypedField =
 	TF4  Word128            |
 	TF5  Word256            |
 	TF6  Amount             |
-	TF7  VariableLengthData |
+	TF7  LZ.ByteString      |
 	TF8  RippleAddress      |
 	TF14 [TypedField]       |
 	TF15 [[TypedField]]     |
@@ -105,7 +107,7 @@ putTF (TF3  x) = (03, put x)
 putTF (TF4  x) = (04, put x)
 putTF (TF5  x) = (05, put x)
 putTF (TF6  x) = (05, put x)
-putTF (TF7  x) = (07, put x)
+putTF (TF7  x) = (07, put $ VariableLengthData x)
 putTF (TF8  x) = (08, putWord8 20 >> put x)
 putTF (TF16 x) = (16, put x)
 putTF (TF17 x) = (17, put x)
@@ -118,7 +120,7 @@ getTF 03 = TF3  <$> get
 getTF 04 = TF4  <$> get
 getTF 05 = TF5  <$> get
 getTF 06 = TF6  <$> get
-getTF 07 = TF7  <$> get
+getTF 07 = (\(VariableLengthData x) -> TF7 x) <$> get
 getTF 08 = TF8  <$> getVariableRippleAddress
 getTF 16 = TF16 <$> get
 getTF 17 = TF17 <$> get
@@ -146,17 +148,17 @@ data Field =
 	HighLimit Amount                |
 	Fee Amount                      |
 	SendMaximum Amount              |
-	PublicKey VariableLengthData    |
-	MessageKey VariableLengthData   |
-	SigningPublicKey VariableLengthData |
-	TransactionSignature VariableLengthData |
-	Generator VariableLengthData    |
-	Signature VariableLengthData    |
-	Domain VariableLengthData       |
-	FundScript VariableLengthData   |
-	RemoveScript VariableLengthData |
-	ExpireScript VariableLengthData |
-	CreateScript VariableLengthData |
+	PublicKey LZ.ByteString         |
+	MessageKey LZ.ByteString        |
+	SigningPublicKey LZ.ByteString  |
+	TransactionSignature LZ.ByteString |
+	Generator LZ.ByteString         |
+	Signature LZ.ByteString         |
+	Domain LZ.ByteString            |
+	FundScript LZ.ByteString        |
+	RemoveScript LZ.ByteString      |
+	ExpireScript LZ.ByteString      |
+	CreateScript LZ.ByteString      |
 	LedgerCloseTimeResolution Word8 |
 	Account RippleAddress           |
 	Owner RippleAddress             |
@@ -197,7 +199,7 @@ instance Binary Field where
 	put (ExpirationTime x) = putTaggedTF 10 $ TF2 x
 	put (TransferRate x) = putTaggedTF 11 $ TF2 x
 	put (WalletSize x) = putTaggedTF 12 $ TF2 x
-	put (Binary.Amount x) = putTaggedTF 01 $ TF6 x
+	put (Ripple.Transaction.Amount x) = putTaggedTF 01 $ TF6 x
 	put (Balance x) = putTaggedTF 02 $ TF6 x
 	put (Limit x) = putTaggedTF 03 $ TF6 x
 	put (TakerPays x) = putTaggedTF 04 $ TF6 x
@@ -242,7 +244,7 @@ getField 09 (TF2  x) = SigningTime x
 getField 10 (TF2  x) = ExpirationTime x
 getField 11 (TF2  x) = TransferRate x
 getField 12 (TF2  x) = WalletSize x
-getField 01 (TF6  x) = Binary.Amount x
+getField 01 (TF6  x) = Ripple.Transaction.Amount x
 getField 02 (TF6  x) = Balance x
 getField 03 (TF6  x) = Limit x
 getField 04 (TF6  x) = TakerPays x
@@ -317,3 +319,91 @@ signing_hash :: Transaction -> LZ.ByteString
 signing_hash t = LZ.take 32 $ Serialize.encodeLazy sha512
 	where
 	sha512 = compute_hash t :: SHA512
+
+-- For sorting
+instance Enum Field where
+	toEnum 0 = LedgerEntryType{}
+	toEnum 1 = TransactionType{}
+	toEnum 2 = Flags{}
+	toEnum 3 = SourceTag{}
+	toEnum 4 = SequenceNumber{}
+	toEnum 5 = PreviousTransactionLedgerSequence{}
+	toEnum 6 = LedgerSequence{}
+	toEnum 7 = LedgerCloseTime{}
+	toEnum 8 = ParentLedgerCloseTime{}
+	toEnum 9 = SigningTime{}
+	toEnum 10 = ExpirationTime{}
+	toEnum 11 = TransferRate{}
+	toEnum 12 = WalletSize{}
+	toEnum 13 = Ripple.Transaction.Amount{}
+	toEnum 14 = Balance{}
+	toEnum 15 = Limit{}
+	toEnum 16 = TakerPays{}
+	toEnum 17 = TakerGets{}
+	toEnum 18 = LowLimit{}
+	toEnum 19 = HighLimit{}
+	toEnum 20 = Fee{}
+	toEnum 21 = SendMaximum{}
+	toEnum 22 = PublicKey{}
+	toEnum 23 = MessageKey{}
+	toEnum 24 = SigningPublicKey{}
+	toEnum 25 = TransactionSignature{}
+	toEnum 26 = Generator{}
+	toEnum 27 = Signature{}
+	toEnum 28 = Domain{}
+	toEnum 29 = FundScript{}
+	toEnum 30 = RemoveScript{}
+	toEnum 31 = ExpireScript{}
+	toEnum 32 = CreateScript{}
+	toEnum 33 = LedgerCloseTimeResolution{}
+	toEnum 34 = Account{}
+	toEnum 35 = Owner{}
+	toEnum 36 = Destination{}
+	toEnum 37 = Issuer{}
+	toEnum 38 = Target{}
+	toEnum 39 = AuthorizedKey{}
+	toEnum 40 = TemplateEntryType{}
+	toEnum 41 = TransactionResult{}
+	toEnum n = error $ "toEnum " ++ show n ++ ", not defined for Field"
+	fromEnum (LedgerEntryType{}) = 0
+	fromEnum (TransactionType{}) = 1
+	fromEnum (Flags{}) = 2
+	fromEnum (SourceTag{}) = 3
+	fromEnum (SequenceNumber{}) = 4
+	fromEnum (PreviousTransactionLedgerSequence{}) = 5
+	fromEnum (LedgerSequence{}) = 6
+	fromEnum (LedgerCloseTime{}) = 7
+	fromEnum (ParentLedgerCloseTime{}) = 8
+	fromEnum (SigningTime{}) = 9
+	fromEnum (ExpirationTime{}) = 10
+	fromEnum (TransferRate{}) = 11
+	fromEnum (WalletSize{}) = 12
+	fromEnum (Ripple.Transaction.Amount{}) = 13
+	fromEnum (Balance{}) = 14
+	fromEnum (Limit{}) = 15
+	fromEnum (TakerPays{}) = 16
+	fromEnum (TakerGets{}) = 17
+	fromEnum (LowLimit{}) = 18
+	fromEnum (HighLimit{}) = 19
+	fromEnum (Fee{}) = 20
+	fromEnum (SendMaximum{}) = 21
+	fromEnum (PublicKey{}) = 22
+	fromEnum (MessageKey{}) = 23
+	fromEnum (SigningPublicKey{}) = 24
+	fromEnum (TransactionSignature{}) = 25
+	fromEnum (Generator{}) = 26
+	fromEnum (Signature{}) = 27
+	fromEnum (Domain{}) = 28
+	fromEnum (FundScript{}) = 29
+	fromEnum (RemoveScript{}) = 30
+	fromEnum (ExpireScript{}) = 31
+	fromEnum (CreateScript{}) = 32
+	fromEnum (LedgerCloseTimeResolution{}) = 33
+	fromEnum (Account{}) = 34
+	fromEnum (Owner{}) = 35
+	fromEnum (Destination{}) = 36
+	fromEnum (Issuer{}) = 37
+	fromEnum (Target{}) = 38
+	fromEnum (AuthorizedKey{}) = 39
+	fromEnum (TemplateEntryType{}) = 40
+	fromEnum (TransactionResult{}) = 41

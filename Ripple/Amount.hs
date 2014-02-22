@@ -1,4 +1,7 @@
-module Amount where
+module Ripple.Amount (
+	Amount(..),
+	Currency(..)
+) where
 
 import Control.Monad
 import Control.Applicative
