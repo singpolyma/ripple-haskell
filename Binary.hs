@@ -19,6 +19,30 @@ import qualified Data.Serialize as Serialize
 import Amount
 #include "Derive.hs"
 
+data TransactionType =
+	Payment | AccountSet | SetRegularKey | OfferCreate | OfferCancel |
+	Sign | TrustSet | OtherTransaction Word16
+	deriving (Show, Eq)
+
+instance Enum TransactionType where
+	toEnum 00 = Payment
+	toEnum 03 = AccountSet
+	toEnum 05 = SetRegularKey
+	toEnum 07 = OfferCreate
+	toEnum 08 = OfferCancel
+	toEnum 09 = Sign
+	toEnum 20 = TrustSet
+	toEnum x = OtherTransaction $ toEnum x
+
+	fromEnum Payment       = 00
+	fromEnum AccountSet    = 03
+	fromEnum SetRegularKey = 05
+	fromEnum OfferCreate   = 07
+	fromEnum OfferCancel   = 08
+	fromEnum Sign          = 09
+	fromEnum TrustSet      = 20
+	fromEnum (OtherTransaction x) = fromEnum x
+
 newtype VariableLengthData = VariableLengthData LZ.ByteString
 	deriving (Show, Eq)
 
@@ -101,7 +125,7 @@ getTF 17 = TF17 <$> get
 
 data Field =
 	LedgerEntryType Word16          |
-	TransactionType Word16          |
+	TransactionType TransactionType |
 	Flags Word32                    |
 	SourceTag Word32                |
 	SequenceNumber Word32           |
@@ -161,7 +185,7 @@ instance Binary Field where
 		return $ getField fld tf
 
 	put (LedgerEntryType x) = putTaggedTF 01 $ TF1 x
-	put (TransactionType x) = putTaggedTF 02 $ TF1 x
+	put (TransactionType x) = putTaggedTF 02 $ TF1 $ toEnum $ fromEnum x
 	put (Flags x) = putTaggedTF 02 $ TF2 x
 	put (SourceTag x) = putTaggedTF 03 $ TF2 x
 	put (SequenceNumber x) = putTaggedTF 04 $ TF2 x
@@ -206,7 +230,7 @@ instance Binary Field where
 
 getField :: Word8 -> TypedField -> Field
 getField 01 (TF1  x) = LedgerEntryType x
-getField 02 (TF1  x) = TransactionType x
+getField 02 (TF1  x) = TransactionType $ toEnum $ fromEnum x
 getField 02 (TF2  x) = Flags x
 getField 03 (TF2  x) = SourceTag x
 getField 04 (TF2  x) = SequenceNumber x
