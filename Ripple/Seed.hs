@@ -1,4 +1,4 @@
-module Seed (getSecret) where
+module Ripple.Seed (getSecret) where
 
 import Data.Word
 import Data.Base58Address (RippleAddress, rippleAddressPayload)
@@ -10,13 +10,12 @@ import Crypto.Types.PubKey.ECC (Curve(CurveFP), CurvePrime(..), CurveCommon(..),
 
 import Crypto.Util (bs2i, i2bs_unsized)
 
-import ECDSA (pmul, publicToBytes, PublicKey(..), PrivateKey(..))
+import ECDSA (publicFromPrivate, publicToBytes, PublicKey(..), PrivateKey(..))
 
--- g is the base point, n is the order thereof
-g :: Point
+-- n is the order of the base point
 n :: Integer
 p256k1 :: Curve
-p256k1@(CurveFP (CurvePrime _ (CurveCommon {ecc_g = g, ecc_n = n}))) = getCurveByName SEC_p256k1
+p256k1@(CurveFP (CurvePrime _ (CurveCommon {ecc_n = n}))) = getCurveByName SEC_p256k1
 
 -- | Derive the secret key for the given secret seed and address
 getSecret ::
@@ -26,7 +25,7 @@ getSecret seed = PrivateKey p256k1 d
 	where
 	d = (sec + priv) `mod` n
 	sec = bs2i $ gen (pub `BS.append` seq)
-	pub = publicToBytes $ PublicKey p256k1 $ pmul (p256k1,g) priv
+	pub = publicToBytes $ publicFromPrivate $ PrivateKey p256k1 priv
 	priv = bs2i $ gen sbytes
 	sbytes = i2bs_unsized (rippleAddressPayload seed)
 	seq = Serialize.encode (0 :: Word32)
