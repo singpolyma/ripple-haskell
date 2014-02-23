@@ -60,7 +60,7 @@ instance Show Amount where
 		show (realToFrac a :: Double) ++ "/" ++ show c
 
 instance Aeson.ToJSON Amount where
-	toJSON (Amount v XRP) = Aeson.toJSON $ show (floor (v * 1000000) :: Integer)
+	toJSON (Amount v XRP) = Aeson.toJSON $ show (floor (v * one_drop) :: Integer)
 	toJSON (Amount v (Currency (a,b,c) issuer)) = Aeson.object [
 			T.pack "value" .= show (realToFrac v :: Double),
 			T.pack "currency" .= [a,b,c],
@@ -83,11 +83,11 @@ instance Aeson.FromJSON Amount where
 		let [a,b,c] = currency
 		return $ Amount amount (Currency (a,b,c) issuer)
 	parseJSON (Aeson.Number (Aeson.I n)) = pure $ Amount (fromIntegral n) XRP
-	parseJSON (Aeson.Number (Aeson.D n)) = pure $ Amount (realToFrac $ floor $ 1000000 * n) XRP
+	parseJSON (Aeson.Number (Aeson.D n)) = pure $ Amount (one_drop * realToFrac n) XRP
 	parseJSON (Aeson.String s) = case T.find (=='.') s of
 		Nothing -> (Amount . realToFrac) <$>
 			(readZ (T.unpack s) :: Aeson.Parser Integer) <*> pure XRP
-		Just _ -> (\x -> Amount (realToFrac $ x * 1000000)) <$>
+		Just _ -> (\x -> Amount (realToFrac x * one_drop)) <$>
 			(readZ (T.unpack s) :: Aeson.Parser Double) <*> pure XRP
 	parseJSON _ = fail "Invalid amount"
 
@@ -100,16 +100,16 @@ instance Binary Amount where
 				(0,0) -> 0
 				(e,m) ->
 					(if testBit value 62 then 1 else -1) *
-					fromIntegral m * (10 ^^ (fromIntegral e - 97))
+					fromIntegral m * (10 ^^ (fromIntegral e + exp_min - 1))
 			else
 				return $ (`Amount` XRP) $
 				(if testBit value 62 then 1 else -1) *
-				(fromIntegral (clearBit value 62) / 1000000)
+				(fromIntegral (clearBit value 62) / one_drop)
 
 	put (Amount value XRP) =
 		put $ (if value >= 0 then (`setBit` 62) else id) drops
 		where
-		drops = floor $ abs $ value * 1000000 :: Word64
+		drops = floor $ abs $ value * one_drop :: Word64
 	put (Amount 0 currency) = do
 		put (setBit (0 :: Word64) 63)
 		put currency
@@ -118,11 +118,20 @@ instance Binary Amount where
 		| otherwise = put encoded >> put currency
 		where
 		encoded = setBit ((e8 `shiftL` 54) .|. m64) 63
-		e8 = fromIntegral (fromIntegral (e+97) :: Word8) -- to get the bits
+		e8 = fromIntegral (fromIntegral (e-exp_min+1) :: Word8) -- to get the bits
 		m64 = fromIntegral m :: Word64
 		(m,e) = until ((>= man_min_value) . fst) (\(m,e) -> (m*10,e-1)) $
 			until ((<= man_max_value) . fst) (\(m,e) -> (m`div`10,e+1))
-			(abs $ floor (value * (10 ^^ 80)), -80)
+			(abs $ floor (value * (10 ^^ exp_max)), -exp_max)
+
+one_drop :: Rational
+one_drop = 1000000
+
+exp_max :: Integer
+exp_max = 80
+
+exp_min :: Integer
+exp_min = -96
 
 man_max_value :: Integer
 man_max_value = 9999999999999999

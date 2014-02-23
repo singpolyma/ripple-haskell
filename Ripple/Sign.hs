@@ -14,7 +14,6 @@ import Crypto.Random (CryptoRandomGen, GenError)
 import ECDSA (sign, publicToBytes, publicFromPrivate, signatureEncodeDER)
 
 import Ripple.Transaction
-import qualified Ripple.Amount
 
 signTransaction :: (CryptoRandomGen g) =>
 	Transaction -> PrivateKey -> g -> Either GenError (Transaction, g)

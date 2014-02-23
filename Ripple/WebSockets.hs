@@ -64,7 +64,7 @@ instance (Aeson.FromJSON a) => Aeson.FromJSON (RippleResult a) where
 				code <- o .: T.pack "error_code"
 				msg  <- o .: T.pack "error_message"
 				case code of
-					27 -> return $ Left $ UnknownCommand
+					27 -> return $ Left UnknownCommand
 					_ -> return $ Left $ OtherRippleError code err msg
 			_ -> fail "Invalid Ripple Result"
 	parseJSON _ = fail "Ripple Result is always a JSON object"

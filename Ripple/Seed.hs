@@ -6,11 +6,11 @@ import Crypto.Hash.CryptoAPI (SHA512, hash')
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as Serialize
 
-import Crypto.Types.PubKey.ECC (Curve(CurveFP), CurvePrime(..), CurveCommon(..), getCurveByName, CurveName(SEC_p256k1), Point)
+import Crypto.Types.PubKey.ECC (Curve(CurveFP), CurvePrime(..), CurveCommon(..), getCurveByName, CurveName(SEC_p256k1))
 
 import Crypto.Util (bs2i, i2bs_unsized)
 
-import ECDSA (publicFromPrivate, publicToBytes, PublicKey(..), PrivateKey(..))
+import ECDSA (publicFromPrivate, publicToBytes, PrivateKey(..))
 
 -- n is the order of the base point
 n :: Integer
