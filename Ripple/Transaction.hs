@@ -14,10 +14,8 @@ import Data.Binary (Binary(..), Put, Get, putWord8, getWord8, encode)
 import Data.Binary.Get (isEmpty, getLazyByteString)
 import Data.Binary.Put (putLazyByteString)
 import Data.Bool.HT (select)
-import Crypto.Hash.CryptoAPI (SHA512, Hash(..), hash)
 import Data.Base58Address (RippleAddress)
 import qualified Data.ByteString.Lazy as LZ
-import qualified Data.Serialize as Serialize
 
 import Ripple.Amount
 
@@ -305,14 +303,3 @@ listUntilEnd = do
 		rest <- listUntilEnd
 		return (next:rest)
 {-# INLINE listUntilEnd #-}
-
-hash_sign :: Word32
-hash_sign = 0x53545800
-
-compute_hash :: (Hash ctx d) => Transaction -> d
-compute_hash t = hash (encode hash_sign `LZ.append` encode t)
-
-signing_hash :: Transaction -> LZ.ByteString
-signing_hash t = LZ.take 32 $ Serialize.encodeLazy sha512
-	where
-	sha512 = compute_hash t :: SHA512
