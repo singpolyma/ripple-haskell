@@ -18,6 +18,7 @@ import Data.Base58Address (RippleAddress)
 import qualified Data.ByteString.Lazy as LZ
 
 import Ripple.Amount
+import Ripple.Path
 
 data TransactionType =
 	Payment | AccountSet | SetRegularKey | OfferCreate | OfferCancel |
@@ -91,6 +92,7 @@ data TypedField =
 	TF15 [[TypedField]]     |
 	TF16 Word8              |
 	TF17 Word160            |
+	TF18 PathSet            |
 	TF19 [Word256]
 	deriving (Show, Eq)
 
@@ -105,6 +107,7 @@ putTF (TF7  x) = (07, put $ VariableLengthData x)
 putTF (TF8  x) = (08, putWord8 20 >> put x)
 putTF (TF16 x) = (16, put x)
 putTF (TF17 x) = (17, put x)
+putTF (TF18 x) = (18, put x)
 putTF (TF19 x) = (19, put $ VariableLengthData $ LZ.concat (map encode x))
 
 getTF :: Word8 -> Get TypedField
@@ -122,6 +125,7 @@ getTF 08 = TF8  <$> do
 	get
 getTF 16 = TF16 <$> get
 getTF 17 = TF17 <$> get
+getTF 18 = TF18 <$> get
 getTF x  = error $ "Unknown type for TypedField: " ++ show x
 
 data Field =
