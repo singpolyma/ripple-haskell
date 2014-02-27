@@ -40,7 +40,7 @@ instance Enum TransactionType where
 	fromEnum SetRegularKey = 05
 	fromEnum OfferCreate   = 07
 	fromEnum OfferCancel   = 08
-	fromEnum Sign	  = 09
+	fromEnum Sign          = 09
 	fromEnum TrustSet      = 20
 	fromEnum (OtherTransaction x) = fromEnum x
 
