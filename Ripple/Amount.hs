@@ -1,6 +1,7 @@
 module Ripple.Amount (
 	Amount(..),
-	Currency(..)
+	Currency(..),
+	CurrencySpecifier(..)
 ) where
 
 import Control.Monad
@@ -28,11 +29,26 @@ instance Show Currency where
 
 instance Binary Currency where
 	get = do
+		CurrencySpecifier code <- get
+		issuer <- get
+
+		return $ Currency code issuer
+
+	put XRP = fail "XRP does not get encoded as a currency specifier."
+	put (Currency code issuer) = do
+		put $ CurrencySpecifier code
+		put issuer
+
+-- | The raw 160-bit currency specifier, no issuer
+newtype CurrencySpecifier = CurrencySpecifier (Char,Char,Char)
+	deriving (Show, Eq)
+
+instance Binary CurrencySpecifier where
+	get = do
 		allZero <- getLazyByteString 12
 		currency <- getLazyByteString 3
 		version <- getLazyByteString 2
 		reserved <- getLazyByteString 3
-		issuer <- get
 
 		when (LZ.any (/=0) allZero) (fail "Bad currency format az")
 		when (LZ.any (/=0) version) (fail "Bad currency format ver")
@@ -40,17 +56,16 @@ instance Binary Currency where
 
 		-- Spec says ASCII
 		let [a,b,c] = map (toEnum.fromIntegral) $ LZ.unpack currency
-		return $ Currency (a,b,c) issuer
 
-	put XRP = fail "XRP does not get encoded as a currency specifier."
-	put (Currency (a,b,c) issuer) = do
+		return $ CurrencySpecifier (a,b,c)
+
+	put (CurrencySpecifier (a,b,c)) = do
 		replicateM_ 12 (putWord8 0)
 		putWord8 $ fromIntegral $ fromEnum a
 		putWord8 $ fromIntegral $ fromEnum b
 		putWord8 $ fromIntegral $ fromEnum c
 		replicateM_ 2 (putWord8 0)
 		replicateM_ 3 (putWord8 0)
-		put issuer
 
 data Amount = Amount Rational Currency
 	deriving (Eq)
