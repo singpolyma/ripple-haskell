@@ -5,6 +5,7 @@ module Ripple.WebSockets (
 	-- * Ripple JSON result parsing and error handling
 	RippleError(..),
 	RippleResult(..),
+	getRippleResult,
 	-- * ripple_path_find
 	CommandRipplePathFind(..),
 	ResultRipplePathFind(..),
@@ -46,12 +47,17 @@ sendJSON conn = liftIO . WS.sendTextData conn . Aeson.encode
 -- | Ripple server error codes
 data RippleError =
 	UnknownCommand |
+	ResponseParseError String |
 	OtherRippleError Int String String
 	deriving (Show, Eq)
 
 -- | The result of a WebSocket command -- either error or a response
 newtype RippleResult a = RippleResult (Either RippleError a)
 	deriving (Show, Eq)
+
+getRippleResult :: Either String (RippleResult a) -> Either RippleError a
+getRippleResult (Left e) = Left $ ResponseParseError e
+getRippleResult (Right (RippleResult x)) = x
 
 instance (Aeson.FromJSON a) => Aeson.FromJSON (RippleResult a) where
 	parseJSON (Aeson.Object o) = RippleResult <$> do
