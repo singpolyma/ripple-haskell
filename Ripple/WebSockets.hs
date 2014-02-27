@@ -12,7 +12,10 @@ module Ripple.WebSockets (
 	Alternative(..),
 	-- * account_tx
 	CommandAccountTX(..),
-	ResultAccountTX(..)
+	ResultAccountTX(..),
+	-- * ledger_closed
+	CommandLedgerClosed(..),
+	ResultLedgerClosed(..)
 ) where
 
 import Numeric (readHex)
@@ -20,7 +23,7 @@ import Data.Maybe (fromMaybe)
 import Data.Word (Word8)
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad (forM)
-import Control.Error (note, fmapL, readZ)
+import Control.Error (note, fmapL, readZ, justZ)
 import Data.Base58Address (RippleAddress)
 import Data.Binary (decodeOrFail)
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -155,6 +158,25 @@ instance Aeson.FromJSON ResultAccountTX where
 
 			return (ledger, tr)
 	parseJSON _ = fail "account_tx result is always a JSON object"
+
+-- ledger_closed
+
+data CommandLedgerClosed = CommandLedgerClosed
+	deriving (Show, Eq)
+
+instance Aeson.ToJSON CommandLedgerClosed where
+	toJSON CommandLedgerClosed = Aeson.object [
+			T.pack "command" .= "ledger_closed"
+		]
+
+data ResultLedgerClosed = ResultLedgerClosed LZ.ByteString Integer
+	deriving (Show, Eq)
+
+instance Aeson.FromJSON ResultLedgerClosed where
+	parseJSON (Aeson.Object o) = ResultLedgerClosed <$>
+		(fmap LZ.pack . justZ . hex2bytes =<< o .: T.pack "ledger_hash") <*>
+		(o .: T.pack "ledger_index")
+	parseJSON _ = fail "ledger_closed result is always a JSON object"
 
 -- Helpers
 
