@@ -32,6 +32,7 @@ library
                 utility-ht,
                 bytestring,
                 text,
+                transformers,
                 largeword >= 1.1.0,
                 binary,
                 cereal,
