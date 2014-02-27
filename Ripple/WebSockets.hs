@@ -22,6 +22,7 @@ import Control.Monad (forM)
 import Control.Error (note, fmapL, readZ)
 import Data.Base58Address (RippleAddress)
 import Data.Binary (decodeOrFail)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 
 import Data.Aeson ((.=), (.:), (.:?))
 import qualified Data.Aeson as Aeson
@@ -34,11 +35,11 @@ import Ripple.Amount
 
 -- Base WebSocket helpers
 
-receiveJSON :: (Aeson.FromJSON j) => WS.Connection -> IO (Either String j)
-receiveJSON = fmap Aeson.eitherDecode . WS.receiveData
+receiveJSON :: (Aeson.FromJSON j, MonadIO m) => WS.Connection -> m (Either String j)
+receiveJSON = liftIO . fmap Aeson.eitherDecode . WS.receiveData
 
-sendJSON :: (Aeson.ToJSON j) => WS.Connection -> j -> IO ()
-sendJSON conn = WS.sendTextData conn . Aeson.encode
+sendJSON :: (Aeson.ToJSON j, MonadIO m) => WS.Connection -> j -> m ()
+sendJSON conn = liftIO . WS.sendTextData conn . Aeson.encode
 
 -- Ripple JSON result parsing and error handling
 
