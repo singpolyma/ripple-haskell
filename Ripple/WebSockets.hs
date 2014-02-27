@@ -116,20 +116,22 @@ instance Aeson.FromJSON Alternative where
 data CommandAccountTX = CommandAccountTX {
 		account        :: RippleAddress,
 		limit          :: Int,
-		ledgerIndexMin :: Maybe Int,
-		ledgerIndexMax :: Maybe Int,
+		offset         :: Maybe Int,
+		ledgerIndexMin :: Maybe Integer,
+		ledgerIndexMax :: Maybe Integer,
 		descending     :: Bool,
 		binary         :: Bool
 	}
 
 instance Aeson.ToJSON CommandAccountTX where
-	toJSON (CommandAccountTX account lim min max desc bin) = Aeson.object [
+	toJSON (CommandAccountTX account lim off min max desc bin) = Aeson.object [
 			T.pack "command"          .= "account_tx",
 			T.pack "account"          .= show account,
 			T.pack "ledger_index_min" .= fromMaybe (-1) min,
 			T.pack "ledger_index_max" .= fromMaybe (-1) max,
 			T.pack "binary"           .= bin,
 			T.pack "limit"            .= lim,
+			T.pack "offset"           .= fromMaybe 0 off,
 			T.pack "descending"       .= desc
 		]
 
