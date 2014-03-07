@@ -34,7 +34,7 @@ library
                 text,
                 transformers,
                 largeword >= 1.1.0,
-                binary,
+                binary >= 0.7.0.0,
                 cereal,
                 aeson,
                 attoparsec,
