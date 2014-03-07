@@ -11,7 +11,7 @@ import Data.Word
 import Data.LargeWord
 import Data.Bits
 import Data.Binary (Binary(..), Put, Get, putWord8, getWord8, encode)
-import Data.Binary.Get (isEmpty, getLazyByteString)
+import Data.Binary.Get (isEmpty, getLazyByteString, lookAheadM)
 import Data.Binary.Put (putLazyByteString)
 import Data.Bool.HT (select)
 import Data.Base58Address (RippleAddress)
@@ -88,8 +88,8 @@ data TypedField =
 	TF6  Amount             |
 	TF7  LZ.ByteString      |
 	TF8  RippleAddress      |
-	TF14 [TypedField]       |
-	TF15 [[TypedField]]     |
+	TF14 [Field]            |
+	TF15 [Field]            |
 	TF16 Word8              |
 	TF17 Word160            |
 	TF18 PathSet            |
@@ -105,6 +105,8 @@ putTF (TF5  x) = (05, put x)
 putTF (TF6  x) = (05, put x)
 putTF (TF7  x) = (07, put $ VariableLengthData x)
 putTF (TF8  x) = (08, putWord8 20 >> put x)
+putTF (TF14 x) = (14, mapM_ put x >> putWord8 0xE1)
+putTF (TF15 x) = (15, mapM_ put x >> putWord8 0xF1)
 putTF (TF16 x) = (16, put x)
 putTF (TF17 x) = (17, put x)
 putTF (TF18 x) = (18, put x)
@@ -123,10 +125,32 @@ getTF 08 = TF8  <$> do
 	when (len /= 20) $
 		fail $ "RippleAddress is 160 bit encoding, len is " ++ show len
 	get
+getTF 14 = TF14 <$> getInnerObject
+getTF 15 = TF15 <$> getInnerArray
 getTF 16 = TF16 <$> get
 getTF 17 = TF17 <$> get
 getTF 18 = TF18 <$> get
 getTF x  = error $ "Unknown type for TypedField: " ++ show x
+
+getInnerObject :: Get [Field]
+getInnerObject = do
+	maybeEmpty <- lookAheadM (fmap isEnd getWord8)
+	case maybeEmpty of
+		Just () -> return []
+		Nothing -> (:) <$> get <*> getInnerObject
+	where
+	isEnd 0xE1 = Just ()
+	isEnd _    = Nothing
+
+getInnerArray :: Get [Field]
+getInnerArray = do
+	maybeEmpty <- lookAheadM (fmap isEnd getWord8)
+	case maybeEmpty of
+		Just () -> return []
+		Nothing -> (:) <$> get <*> getInnerArray
+	where
+	isEnd 0xF1 = Just ()
+	isEnd _    = Nothing
 
 data Field =
 	LedgerEntryType Word16          |
@@ -142,6 +166,16 @@ data Field =
 	ExpirationTime Word32           |
 	TransferRate Word32             |
 	WalletSize Word32               |
+	LedgerHash Word256              |
+	ParentHash Word256              |
+	TransactionHash Word256         |
+	AccountHash Word256             |
+	PreviousTxnID Word256           |
+	LedgerIndex Word256             |
+	WalletLocator Word256           |
+	RootIndex Word256               |
+	AccountTxnID Word256            |
+	InvoiceID Word256               |
 	Amount Amount                   |
 	Balance Amount                  |
 	Limit Amount                    |
@@ -151,6 +185,7 @@ data Field =
 	HighLimit Amount                |
 	Fee Amount                      |
 	SendMaximum Amount              |
+	DeliveredAmount Amount          |
 	PublicKey LZ.ByteString         |
 	MessageKey LZ.ByteString        |
 	SigningPublicKey LZ.ByteString  |
@@ -169,6 +204,8 @@ data Field =
 	Issuer RippleAddress            |
 	Target RippleAddress            |
 	AuthorizedKey RippleAddress     |
+	ModifiedNode [Field]            |
+	AffectedNodes [Field]           |
 	TemplateEntryType Word8         |
 	TransactionResult Word8         |
 	UnknownField Word8 TypedField
@@ -216,6 +253,16 @@ getField 09 (TF2  x) = SigningTime x
 getField 10 (TF2  x) = ExpirationTime x
 getField 11 (TF2  x) = TransferRate x
 getField 12 (TF2  x) = WalletSize x
+getField 01 (TF5  x) = LedgerHash x
+getField 02 (TF5  x) = ParentHash x
+getField 03 (TF5  x) = TransactionHash x
+getField 04 (TF5  x) = AccountHash x
+getField 05 (TF5  x) = PreviousTxnID x
+getField 06 (TF5  x) = LedgerIndex x
+getField 07 (TF5  x) = WalletLocator x
+getField 08 (TF5  x) = RootIndex x
+getField 09 (TF5  x) = AccountTxnID x
+getField 17 (TF5  x) = InvoiceID x
 getField 01 (TF6  x) = Ripple.Transaction.Amount x
 getField 02 (TF6  x) = Balance x
 getField 03 (TF6  x) = Limit x
@@ -225,6 +272,7 @@ getField 06 (TF6  x) = LowLimit x
 getField 07 (TF6  x) = HighLimit x
 getField 08 (TF6  x) = Fee x
 getField 09 (TF6  x) = SendMaximum x
+getField 18 (TF6  x) = DeliveredAmount x
 getField 01 (TF7  x) = PublicKey x
 getField 02 (TF7  x) = MessageKey x
 getField 03 (TF7  x) = SigningPublicKey x
@@ -242,6 +290,8 @@ getField 03 (TF8  x) = Destination x
 getField 04 (TF8  x) = Issuer x
 getField 05 (TF8  x) = Target x
 getField 06 (TF8  x) = AuthorizedKey x
+getField 05 (TF14 x) = ModifiedNode x
+getField 08 (TF15 x) = AffectedNodes x
 getField 01 (TF16 x) = LedgerCloseTimeResolution x
 getField 02 (TF16 x) = TemplateEntryType x
 getField 03 (TF16 x) = TransactionResult x
@@ -261,6 +311,16 @@ ungetField (SigningTime x)               = (09, TF2 x)
 ungetField (ExpirationTime x)            = (10, TF2 x)
 ungetField (TransferRate x)              = (11, TF2 x)
 ungetField (WalletSize x)                = (12, TF2 x)
+ungetField (LedgerHash x)                = (01, TF5 x)
+ungetField (ParentHash x)                = (02, TF5 x)
+ungetField (TransactionHash x)           = (03, TF5 x)
+ungetField (AccountHash x)               = (04, TF5 x)
+ungetField (PreviousTxnID x)             = (05, TF5 x)
+ungetField (LedgerIndex x)               = (06, TF5 x)
+ungetField (WalletLocator x)             = (07, TF5 x)
+ungetField (RootIndex x)                 = (08, TF5 x)
+ungetField (AccountTxnID x)              = (09, TF5 x)
+ungetField (InvoiceID x)                 = (17, TF5 x)
 ungetField (Ripple.Transaction.Amount x) = (01, TF6 x)
 ungetField (Balance x)                   = (02, TF6 x)
 ungetField (Limit x)                     = (03, TF6 x)
@@ -270,6 +330,7 @@ ungetField (LowLimit x)                  = (06, TF6 x)
 ungetField (HighLimit x)                 = (07, TF6 x)
 ungetField (Fee x)                       = (08, TF6 x)
 ungetField (SendMaximum x)               = (09, TF6 x)
+ungetField (DeliveredAmount x)           = (18, TF6 x)
 ungetField (PublicKey x)                 = (01, TF7 x)
 ungetField (MessageKey x)                = (02, TF7 x)
 ungetField (SigningPublicKey x)          = (03, TF7 x)
@@ -287,6 +348,8 @@ ungetField (Destination x)               = (03, TF8 x)
 ungetField (Issuer x)                    = (04, TF8 x)
 ungetField (Target x)                    = (05, TF8 x)
 ungetField (AuthorizedKey x)             = (06, TF8 x)
+ungetField (ModifiedNode x)              = (05, TF14 x)
+ungetField (AffectedNodes x)             = (08, TF15 x)
 ungetField (LedgerCloseTimeResolution x) = (01, TF16 x)
 ungetField (TemplateEntryType x)         = (02, TF16 x)
 ungetField (TransactionResult x)         = (03, TF16 x)
