@@ -22,6 +22,7 @@ extra-source-files:
 library
         exposed-modules:
                 Ripple.Amount
+                Ripple.Path
                 Ripple.Seed
                 Ripple.Sign
                 Ripple.Transaction
