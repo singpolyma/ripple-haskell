@@ -4,12 +4,15 @@ module Ripple.Transaction (
 	Field(..)
 ) where
 
+import Numeric
 import Control.Monad
 import Control.Applicative
+import Data.Maybe
 import Data.List
 import Data.Word
 import Data.LargeWord
 import Data.Bits
+import Control.Error (readMay)
 import Data.Binary (Binary(..), Put, Get, putWord8, getWord8, encode)
 import Data.Binary.Get (isEmpty, getLazyByteString, lookAheadM)
 import Data.Binary.Put (putLazyByteString)
@@ -17,13 +20,17 @@ import Data.Bool.HT (select)
 import Data.Base58Address (RippleAddress)
 import qualified Data.ByteString.Lazy as LZ
 
+import Data.Aeson ((.:?))
+import qualified Data.Aeson as Aeson
+import qualified Data.Text as T
+
 import Ripple.Amount
 import Ripple.Path
 
 data TransactionType =
 	Payment | AccountSet | SetRegularKey | OfferCreate | OfferCancel |
 	Sign | TrustSet | OtherTransaction Word16
-	deriving (Show, Eq)
+	deriving (Show, Read, Eq)
 
 instance Enum TransactionType where
 	toEnum 00 = Payment
@@ -370,3 +377,38 @@ listUntilEnd = do
 		rest <- listUntilEnd
 		return (next:rest)
 {-# INLINE listUntilEnd #-}
+
+instance Aeson.FromJSON Transaction where
+	parseJSON (Aeson.Object o) = Transaction <$> do
+		txhash <- fmap (>>= fmap TransactionHash . hexMay) (k "hash")
+		account <- fmap (>>= fmap Account . readMay) (k "Account")
+		amount <- (fmap.fmap) Ripple.Transaction.Amount (k "Amount")
+		destination <- fmap (>>= fmap Destination . readMay) (k "Destination")
+		fee <- (fmap.fmap) Fee (k "Fee")
+		flags <- (fmap.fmap) Flags (k "Flags")
+		sendMax <- (fmap.fmap) SendMaximum (k "SendMax")
+		sequence <- (fmap.fmap) SequenceNumber (k "Sequence")
+		typ <- fmap (>>= fmap TransactionType . readMay) (k "TransactionType")
+		delivered <- (fmap.fmap) DeliveredAmount (k "DeliveredAmount")
+		result <- fmap (>>= fmap TransactionResult . tRes) (k "TransactionResult")
+		return $ catMaybes [
+				txhash, account, amount, destination, fee, flags, sendMax, sequence,
+				typ, delivered, result
+			]
+		where
+		k s = o .:? T.pack s
+	parseJSON _ = fail "Transaction is always a JSON object"
+
+hexMay :: (Eq a, Num a) => String -> Maybe a
+hexMay s = case readHex s of
+	[(x, "")] -> Just x
+	_ -> Nothing
+
+tRes :: String -> Maybe Word8
+tRes ('t':'e':'s':_) = Just 0
+tRes ('t':'e':'c':_) = Just 100    -- 100 .. 199
+tRes ('t':'e':'r':_) = Just (-99)  -- -99 .. -1
+tRes ('t':'e':'f':_) = Just (-199) -- -199 .. -100
+tRes ('t':'e':'m':_) = Just (-299) -- -299 .. -200
+tRes ('t':'e':'l':_) = Just (-399) -- -399 .. -300
+tRes _ = Nothing

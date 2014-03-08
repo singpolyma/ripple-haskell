@@ -138,7 +138,7 @@ instance Aeson.ToJSON CommandAccountTX where
 			T.pack "descending"       .= desc
 		]
 
--- | [(ledger_index, transaction)]
+-- | [(ledger_index, transaction+meta)]
 data ResultAccountTX = ResultAccountTX [(Integer,Transaction)]
 	deriving (Show, Eq)
 
@@ -146,17 +146,36 @@ instance Aeson.FromJSON ResultAccountTX where
 	parseJSON (Aeson.Object o) = ResultAccountTX <$> do
 		transactions <- o .: T.pack "transactions"
 		forM transactions $ \transaction -> do
-			True <- transaction .: T.pack "validated"
-			ledger <- transaction .: T.pack "ledger_index"
-			blob <- transaction .:? T.pack "tx_blob" -- binary transaction
+			True   <- transaction .: T.pack "validated"
+			mblob  <- transaction .:? T.pack "tx_blob" -- binary transaction
+			mtx    <- transaction .:? T.pack "tx" -- json transaction
 
-			tr <- either fail return $ do
-				hex <- note "JSON transactions not implemented yet" blob
-				bytes <- note "Invalid Hexidecimal encoding" $ hex2bytes hex
-				fmapL (\(_,_,e) -> e) $ fmap (\(_,_,r) -> r) $
-					decodeOrFail (LZ.pack bytes)
+			case (mblob, mtx) of
+				(Just blob, Nothing) -> do
+					meta <- transaction .: T.pack "meta"
+					tr <- either fail return $ do
+						bytes <- note "Invalid Hexidecimal encoding" $ hex2bytes blob
+						Transaction tr <- fmapL (\(_,_,e)->e) $ fmap (\(_,_,r)->r) $
+							decodeOrFail (LZ.pack bytes)
 
-			return (ledger, tr)
+						bytes <- note "Invalid Hexidecimal encoding" $ hex2bytes meta
+						Transaction mta <- fmapL (\(_,_,e)->e) $ fmap (\(_,_,r)->r) $
+							decodeOrFail (LZ.pack bytes)
+
+						return $ Transaction (tr ++ mta)
+
+					ledger <- transaction .: T.pack "ledger_index"
+					return (ledger, tr)
+
+				(Nothing, Just (Transaction tx)) -> do
+					Transaction meta <- transaction .: T.pack "meta"
+					Aeson.Object txo <- transaction .: T.pack "tx"
+					ledger <- txo .: T.pack "ledger_index"
+					return (ledger, Transaction (tx ++ meta))
+
+				(Just _, Just _) -> fail "tx or tx_blob required (not both)"
+				_ -> fail "tx or tx_blob required"
+
 	parseJSON _ = fail "account_tx result is always a JSON object"
 
 -- ledger_closed
