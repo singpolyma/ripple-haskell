@@ -173,6 +173,8 @@ data Field =
 	ExpirationTime Word32           |
 	TransferRate Word32             |
 	WalletSize Word32               |
+	OwnerCount Word32               |
+	DestinationTag Word32           |
 	LedgerHash Word256              |
 	ParentHash Word256              |
 	TransactionHash Word256         |
@@ -260,6 +262,8 @@ getField 09 (TF2  x) = SigningTime x
 getField 10 (TF2  x) = ExpirationTime x
 getField 11 (TF2  x) = TransferRate x
 getField 12 (TF2  x) = WalletSize x
+getField 13 (TF2  x) = OwnerCount x
+getField 14 (TF2  x) = DestinationTag x
 getField 01 (TF5  x) = LedgerHash x
 getField 02 (TF5  x) = ParentHash x
 getField 03 (TF5  x) = TransactionHash x
@@ -318,6 +322,8 @@ ungetField (SigningTime x)               = (09, TF2 x)
 ungetField (ExpirationTime x)            = (10, TF2 x)
 ungetField (TransferRate x)              = (11, TF2 x)
 ungetField (WalletSize x)                = (12, TF2 x)
+ungetField (OwnerCount x)                = (13, TF2 x)
+ungetField (DestinationTag x)            = (14, TF2 x)
 ungetField (LedgerHash x)                = (01, TF5 x)
 ungetField (ParentHash x)                = (02, TF5 x)
 ungetField (TransactionHash x)           = (03, TF5 x)
@@ -391,9 +397,11 @@ instance Aeson.FromJSON Transaction where
 		typ <- fmap (>>= fmap TransactionType . readMay) (k "TransactionType")
 		delivered <- (fmap.fmap) DeliveredAmount (k "DeliveredAmount")
 		result <- fmap (>>= fmap TransactionResult . tRes) (k "TransactionResult")
+		dt <- (fmap.fmap) DestinationTag (k "DestinationTag")
+		invoiceid <- fmap (>>= fmap InvoiceID . hexMay) (k "InvoiceID")
 		return $ catMaybes [
 				txhash, account, amount, destination, fee, flags, sendMax, sequence,
-				typ, delivered, result
+				typ, delivered, result, dt, invoiceid
 			]
 		where
 		k s = o .:? T.pack s
