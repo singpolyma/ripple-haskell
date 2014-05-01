@@ -37,7 +37,7 @@ library
                 largeword >= 1.1.0 && < 1.2,
                 binary >= 0.7.0.0,
                 cereal,
-                aeson < 0.7,
+                aeson,
                 attoparsec,
                 errors,
                 base58address,
