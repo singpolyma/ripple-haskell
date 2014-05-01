@@ -18,7 +18,6 @@ import qualified Data.Text as T
 import Data.Aeson ((.=), (.:))
 import qualified Data.Aeson as Aeson
 import qualified Data.Aeson.Types as Aeson
-import qualified Data.Attoparsec.Number as Aeson
 
 data Currency = XRP | Currency (Char,Char,Char) RippleAddress
 	deriving (Eq)
@@ -97,8 +96,9 @@ instance Aeson.FromJSON Amount where
 
 		let [a,b,c] = currency
 		return $ Amount amount (Currency (a,b,c) issuer)
-	parseJSON (Aeson.Number (Aeson.I n)) = pure $ Amount (fromIntegral n) XRP
-	parseJSON (Aeson.Number (Aeson.D n)) = pure $ Amount (one_drop * realToFrac n) XRP
+	parseJSON (Aeson.Number n)
+		| floor n == ceiling n = pure $ Amount (realToFrac n) XRP
+		| otherwise = pure $ Amount (one_drop * realToFrac n) XRP
 	parseJSON (Aeson.String s) = case T.find (=='.') s of
 		Nothing -> (Amount . realToFrac) <$>
 			(readZ (T.unpack s) :: Aeson.Parser Integer) <*> pure XRP
