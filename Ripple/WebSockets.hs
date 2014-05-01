@@ -55,15 +55,16 @@ data RippleError =
 	deriving (Show, Eq)
 
 -- | The result of a WebSocket command -- either error or a response
-newtype RippleResult a = RippleResult (Either RippleError a)
+data RippleResult id a = RippleResult (Maybe id) (Either RippleError a)
 	deriving (Show, Eq)
 
-getRippleResult :: Either String (RippleResult a) -> Either RippleError a
+getRippleResult :: Either String (RippleResult id a) -> Either RippleError a
 getRippleResult (Left e) = Left $ ResponseParseError e
-getRippleResult (Right (RippleResult x)) = x
+getRippleResult (Right (RippleResult _ x)) = x
 
-instance (Aeson.FromJSON a) => Aeson.FromJSON (RippleResult a) where
-	parseJSON (Aeson.Object o) = RippleResult <$> do
+instance (Aeson.FromJSON a, Aeson.FromJSON id) =>
+		Aeson.FromJSON (RippleResult id a) where
+	parseJSON (Aeson.Object o) = RippleResult <$> o .:? T.pack "id" <*> do
 		status <- o .: T.pack "status"
 		typ <- o .: T.pack "type"
 		case (status, typ) of
