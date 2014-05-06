@@ -34,7 +34,7 @@ library
                 bytestring,
                 text,
                 transformers,
-                largeword >= 1.1.0 && < 1.2,
+                largeword,
                 binary >= 0.7.0.0,
                 cereal,
                 aeson,
