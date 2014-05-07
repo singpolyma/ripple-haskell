@@ -6,6 +6,7 @@ module Ripple.WebSockets (
 	RippleError(..),
 	RippleResult(..),
 	getRippleResult,
+	getRippleResult',
 	-- * ripple_path_find
 	CommandRipplePathFind(..),
 	ResultRipplePathFind(..),
@@ -58,9 +59,12 @@ data RippleError =
 data RippleResult id a = RippleResult (Maybe id) (Either RippleError a)
 	deriving (Show, Eq)
 
-getRippleResult :: Either String (RippleResult id a) -> Either RippleError a
-getRippleResult (Left e) = Left $ ResponseParseError e
-getRippleResult (Right (RippleResult _ x)) = x
+getRippleResult' :: Either String (RippleResult id a) -> Either RippleError a
+getRippleResult' (Left e) = Left $ ResponseParseError e
+getRippleResult' (Right (RippleResult _ x)) = x
+
+getRippleResult :: Either String (RippleResult () a) -> Either RippleError a
+getRippleResult = getRippleResult'
 
 instance (Aeson.FromJSON a, Aeson.FromJSON id) =>
 		Aeson.FromJSON (RippleResult id a) where
