@@ -6,10 +6,12 @@ import Prelude (show,putStrLn)
 import BasicPrelude hiding (show,putStrLn)
 import Numeric (showHex)
 import Control.Monad.Loops (allM)
+import Data.Time.LocalTime (LocalTime, zonedTimeToLocalTime, utcToLocalZonedTime)
 import Data.Time.Clock (UTCTime, diffUTCTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Control.Error (note, fmapL, EitherT(..), runEitherT)
 import Data.Base58Address (RippleAddress)
+import Text.Printf (printf)
 import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Network.WebSockets as WS
@@ -35,7 +37,7 @@ main = do
 		firstLedger <- findLedgerAt conn startTime realisticMin realisticMax
 			((realisticMin + realisticMax) `div` 2)
 
-		liftIO $ appendFile out $ T.pack "Date,TransactionHash,Account,Amount,DestinationTag,InvoiceID"
+		liftIO $ writeFile out $ T.pack "Date,TransactionHash,Account,Amount,Currency,DestinationTag,InvoiceID\n"
 		byPages conn addr firstLedger idx $ \ledger (Transaction fields) -> do
 			let fs = Set.fromList fields
 			let headers = (,,,) <$>
@@ -48,7 +50,8 @@ main = do
 					| fromRippleTime t > endTime -> return False
 				Just (TransactionType Payment, Destination dst, TransactionResult 0, SigningTime t)
 					| dst == addr -> do
-						let line = printLine (fromRippleTime t)
+						t' <- zonedTimeToLocalTime <$> utcToLocalZonedTime (fromRippleTime t)
+						let line = printLine t'
 							(Set.lookupLE (TransactionHash {}) fs)
 							(Set.lookupLE (Account {}) fs)
 							(getAmount
@@ -65,15 +68,15 @@ main = do
 		Left e -> print e
 		Right _ -> return ()
 
-printLine :: UTCTime -> Maybe Field -> Maybe Field -> Maybe (Double, String) -> Maybe Field -> Maybe Field -> String
-printLine t (Just (TransactionHash h)) (Just (Account acc)) (Just (amount, "XRP")) (Just (DestinationTag dt)) (Just (InvoiceID inv)) =
-	intercalate "," $ [show t,hex h,show acc,show amount ++ "/" ++ "XRP",show dt,hex inv]
-printLine t (Just (TransactionHash h)) (Just (Account acc)) (Just (amount, "XRP")) (Just (DestinationTag dt)) _ =
-	intercalate "," $ [show t,hex h,show acc,show amount ++ "/" ++ "XRP",show dt,""]
-printLine t (Just (TransactionHash h)) (Just (Account acc)) (Just (amount, "XRP")) _ (Just (InvoiceID inv)) =
-	intercalate "," $ [show t,hex h,show acc,show amount ++ "/" ++ "XRP","",hex inv]
-printLine t (Just (TransactionHash h)) (Just (Account acc)) (Just (amount, "XRP")) _ _ =
-	intercalate "," $ [show t,hex h,show acc,show amount ++ "/" ++ "XRP","",""]
+printLine :: LocalTime -> Maybe Field -> Maybe Field -> Maybe (Double, String) -> Maybe Field -> Maybe Field -> String
+printLine t (Just (TransactionHash h)) (Just (Account acc)) (Just (amount, currency)) dt inv =
+	intercalate "," $ [show t,hex h,show acc,printf "%f" amount,currency,dtS dt,invS inv]
+	where
+	dtS (Just (DestinationTag dt)) = show dt
+	dtS _ = ""
+
+	invS (Just (InvoiceID inv)) = hex inv
+	invS _ = ""
 printLine _ _ _ _ _ _ = ""
 
 hex :: (Integral a, Show a) => a -> String
