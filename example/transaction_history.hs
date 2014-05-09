@@ -5,6 +5,7 @@ module Main where
 import Prelude (show,putStrLn)
 import BasicPrelude hiding (show,putStrLn)
 import Numeric (showHex)
+import Network (withSocketsDo)
 import Control.Monad.Loops (allM)
 import Data.Time.LocalTime (LocalTime, zonedTimeToLocalTime, utcToLocalZonedTime)
 import Data.Time.Clock (UTCTime, diffUTCTime)
@@ -24,7 +25,7 @@ import qualified Ripple.Amount as A
 deriving instance Typeable RippleAddress
 
 main :: IO ()
-main = do
+main = withSocketsDo $ do
 	(addr, startTime, endTime, out) <- readArgs
 	x <- WS.runClient "s_east.ripple.com" 443 "/" $ \conn -> runEitherT $ do
 		sendJSON conn CommandLedgerClosed
