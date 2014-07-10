@@ -6,6 +6,7 @@ module Ripple.WebSockets (
 	RippleError(..),
 	RippleResult(..),
 	getRippleResult,
+	getRippleResult',
 	-- * ripple_path_find
 	CommandRipplePathFind(..),
 	ResultRipplePathFind(..),
@@ -13,6 +14,9 @@ module Ripple.WebSockets (
 	-- * account_tx
 	CommandAccountTX(..),
 	ResultAccountTX(..),
+	-- * ledger
+	CommandLedger(..),
+	ResultLedger(..),
 	-- * ledger_closed
 	CommandLedgerClosed(..),
 	ResultLedgerClosed(..)
@@ -25,6 +29,8 @@ import Control.Applicative ((<$>), (<*>))
 import Control.Monad (forM)
 import Control.Error (note, fmapL, readZ, justZ)
 import Data.Base58Address (RippleAddress)
+import Data.Time.Clock (UTCTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Binary (decodeOrFail)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 
@@ -58,9 +64,12 @@ data RippleError =
 data RippleResult id a = RippleResult (Maybe id) (Either RippleError a)
 	deriving (Show, Eq)
 
-getRippleResult :: Either String (RippleResult id a) -> Either RippleError a
-getRippleResult (Left e) = Left $ ResponseParseError e
-getRippleResult (Right (RippleResult _ x)) = x
+getRippleResult' :: Either String (RippleResult id a) -> Either RippleError a
+getRippleResult' (Left e) = Left $ ResponseParseError e
+getRippleResult' (Right (RippleResult _ x)) = x
+
+getRippleResult :: Either String (RippleResult () a) -> Either RippleError a
+getRippleResult = getRippleResult'
 
 instance (Aeson.FromJSON a, Aeson.FromJSON id) =>
 		Aeson.FromJSON (RippleResult id a) where
@@ -178,6 +187,46 @@ instance Aeson.FromJSON ResultAccountTX where
 				_ -> fail "tx or tx_blob required"
 
 	parseJSON _ = fail "account_tx result is always a JSON object"
+
+-- ledger
+
+data CommandLedger = CommandLedger {
+		ledger_index :: Maybe Integer,
+		transactions :: Bool,
+		expand :: Bool
+	} deriving (Show, Eq)
+
+instance Aeson.ToJSON CommandLedger where
+	toJSON (CommandLedger ledger_index transactions expand) = Aeson.object [
+			T.pack "command"      .= "ledger",
+			T.pack "ledger_index" .= fromMaybe (-1) ledger_index,
+			T.pack "transactions" .= transactions,
+			T.pack "expand" .= expand
+		]
+
+data ResultLedger = ResultLedger {
+		result_ledger_closed   :: Bool,
+		result_ledger_accepted :: Bool,
+		result_ledger_index    :: Integer,
+		result_parent_hash     :: LZ.ByteString,
+		result_ledger_hash     :: LZ.ByteString,
+		result_total_coins     :: Integer,
+		result_close_time      :: UTCTime
+	} deriving (Show, Eq)
+
+instance Aeson.FromJSON ResultLedger where
+	parseJSON (Aeson.Object root) = do
+		o <- root .: T.pack "ledger"
+		ResultLedger <$>
+			(o .: T.pack "closed") <*>
+			fmap (fromMaybe False) (o .:? T.pack "accepted") <*>
+			(readZ =<< o .: T.pack "ledger_index") <*>
+			(fmap LZ.pack . justZ . hex2bytes =<< o .: T.pack "parent_hash") <*>
+			(fmap LZ.pack . justZ . hex2bytes =<< o .: T.pack "ledger_hash") <*>
+			(readZ =<< o .: T.pack "total_coins") <*>
+			fmap (posixSecondsToUTCTime.fromInteger.(+946684800))
+				(o .: T.pack "close_time")
+	parseJSON _ = fail "ledger result is always a JSON object"
 
 -- ledger_closed
 

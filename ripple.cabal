@@ -1,5 +1,5 @@
 name:            ripple
-version:         0.2
+version:         0.3
 cabal-version:   >= 1.8
 license:         OtherLicense
 license-file:    COPYING
@@ -34,7 +34,8 @@ library
                 bytestring,
                 text,
                 transformers,
-                largeword,
+                time,
+                largeword >= 1.1.0,
                 binary >= 0.7.0.0,
                 cereal,
                 aeson,

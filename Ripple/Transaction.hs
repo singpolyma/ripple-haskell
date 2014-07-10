@@ -399,9 +399,10 @@ instance Aeson.FromJSON Transaction where
 		result <- fmap (>>= fmap TransactionResult . tRes) (k "TransactionResult")
 		dt <- (fmap.fmap) DestinationTag (k "DestinationTag")
 		invoiceid <- fmap (>>= fmap InvoiceID . hexMay) (k "InvoiceID")
+		date <- fmap (>>= fmap SigningTime) (k "date")
 		return $ catMaybes [
 				txhash, account, amount, destination, fee, flags, sendMax, sequence,
-				typ, delivered, result, dt, invoiceid
+				typ, delivered, result, dt, invoiceid, date
 			]
 		where
 		k s = o .:? T.pack s
