@@ -97,12 +97,12 @@ instance Aeson.FromJSON Amount where
 		let [a,b,c] = currency
 		return $ Amount amount (Currency (a,b,c) issuer)
 	parseJSON (Aeson.Number n)
-		| floor n == ceiling n = pure $ Amount (realToFrac n) XRP
-		| otherwise = pure $ Amount (one_drop * realToFrac n) XRP
+		| floor n == ceiling n = pure $ Amount (realToFrac n / one_drop) XRP
+		| otherwise = pure $ Amount (realToFrac n) XRP
 	parseJSON (Aeson.String s) = case T.find (=='.') s of
-		Nothing -> (Amount . realToFrac) <$>
+		Nothing -> (Amount . (/one_drop) . realToFrac) <$>
 			(readZ (T.unpack s) :: Aeson.Parser Integer) <*> pure XRP
-		Just _ -> (\x -> Amount (realToFrac x * one_drop)) <$>
+		Just _ -> (\x -> Amount (realToFrac x)) <$>
 			(readZ (T.unpack s) :: Aeson.Parser Double) <*> pure XRP
 	parseJSON _ = fail "Invalid amount"
 
