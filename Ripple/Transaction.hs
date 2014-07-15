@@ -175,6 +175,7 @@ data Field =
 	WalletSize Word32               |
 	OwnerCount Word32               |
 	DestinationTag Word32           |
+	OfferSequence Word32            |
 	LedgerHash Word256              |
 	ParentHash Word256              |
 	TransactionHash Word256         |
@@ -264,6 +265,7 @@ getField 11 (TF2  x) = TransferRate x
 getField 12 (TF2  x) = WalletSize x
 getField 13 (TF2  x) = OwnerCount x
 getField 14 (TF2  x) = DestinationTag x
+getField 25 (TF2  x) = OfferSequence x
 getField 01 (TF5  x) = LedgerHash x
 getField 02 (TF5  x) = ParentHash x
 getField 03 (TF5  x) = TransactionHash x
@@ -324,6 +326,7 @@ ungetField (TransferRate x)              = (11, TF2 x)
 ungetField (WalletSize x)                = (12, TF2 x)
 ungetField (OwnerCount x)                = (13, TF2 x)
 ungetField (DestinationTag x)            = (14, TF2 x)
+ungetField (OfferSequence x)             = (25, TF2 x)
 ungetField (LedgerHash x)                = (01, TF5 x)
 ungetField (ParentHash x)                = (02, TF5 x)
 ungetField (TransactionHash x)           = (03, TF5 x)
