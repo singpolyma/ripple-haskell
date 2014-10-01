@@ -1,7 +1,11 @@
 module Ripple.Transaction (
 	Transaction(..),
 	TransactionType(..),
-	Field(..)
+	Field(..),
+	tfFullyCanonicalSig,
+	tfNoDirectRipple, tfPartialPayment,
+	tfPassive, tfImmediateOrCancel, tfFillOrKill, tfSell,
+	tfSetAuth, tfSetNoRipple, tfClearNoRipple, tfSetFreeze, tfClearFreeze
 ) where
 
 import Numeric
@@ -424,3 +428,26 @@ tRes ('t':'e':'f':_) = Just (-199) -- -199 .. -100
 tRes ('t':'e':'m':_) = Just (-299) -- -299 .. -200
 tRes ('t':'e':'l':_) = Just (-399) -- -399 .. -300
 tRes _ = Nothing
+
+tfFullyCanonicalSig :: Word32
+tfFullyCanonicalSig = 0x80000000
+
+-- Payment flags
+tfNoDirectRipple, tfPartialPayment :: Word32
+tfNoDirectRipple = 0x00010000
+tfPartialPayment = 0x00020000
+
+-- OfferCreate flags
+tfPassive, tfImmediateOrCancel, tfFillOrKill, tfSell :: Word32
+tfPassive               = 0x00010000
+tfImmediateOrCancel     = 0x00020000
+tfFillOrKill            = 0x00040000
+tfSell                  = 0x00080000
+
+-- TrustSet flags
+tfSetAuth, tfSetNoRipple, tfClearNoRipple, tfSetFreeze, tfClearFreeze :: Word32
+tfSetAuth       = 0x00010000
+tfSetNoRipple   = 0x00020000
+tfClearNoRipple = 0x00040000
+tfSetFreeze     = 0x00100000
+tfClearFreeze   = 0x00200000
