@@ -26,6 +26,13 @@ instance Show Currency where
 	show XRP = "XRP"
 	show (Currency (a,b,c) adr) = [a,b,c,'/'] ++ show adr
 
+instance Aeson.ToJSON Currency where
+	toJSON XRP = Aeson.object [T.pack "currency" .= "XRP"]
+	toJSON (Currency (a,b,c) issuer) = Aeson.object [
+			T.pack "currency" .= [a,b,c],
+			T.pack "issuer" .= show issuer
+		]
+
 instance Binary Currency where
 	get = do
 		CurrencySpecifier code <- get
